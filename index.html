@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TV App</title>
+  <title>TV Streaming App</title>
   <style>
     body {
       margin: 0;
@@ -62,17 +62,12 @@
   </div>
 
   <script>
-    const playlistUrl = 'http://tiny.cc/homepro2238'; // เปลี่ยนเป็น URL หรือ path ของไฟล์ .m3u ของคุณ
-    const defaultHeaders = {
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/605.1.15/Clipbox+/2.2.8',
-      'Referer': 'https://demo-live.siamzeed.com/'
-    };
-
+    const playlistUrl = 'http://tiny.cc/homepro2238';
     let categories = [];
     let channelsByCategory = {};
     let currentCategoryIndex = 0;
     let currentChannelIndex = 0;
-    let focusLevel = 'category'; // 'category' or 'channel'
+    let focusLevel = 'category';
 
     async function fetchPlaylist() {
       const response = await fetch(playlistUrl);
@@ -144,13 +139,8 @@
       const group = categories[currentCategoryIndex];
       const channel = channelsByCategory[group][currentChannelIndex];
       const video = document.getElementById('videoPlayer');
-      fetch(channel.url, { headers: defaultHeaders })
-        .then(response => response.blob())
-        .then(blob => {
-          video.src = URL.createObjectURL(blob);
-          video.play();
-        })
-        .catch(err => console.error('Error loading stream:', err));
+      video.src = channel.url; // สตรีมวิดีโอโดยตรง
+      video.play();
     }
 
     document.addEventListener('keydown', (e) => {
