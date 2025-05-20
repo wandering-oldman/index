@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TV App</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      background-color: #1e1e2f;
+      font-family: sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+
+    .category-menu {
+      width: 200px;
+      background-color: #5a2a83;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    .channel-menu {
+      width: 250px;
+      background-color: #7a4db8;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    .video-container {
+      flex-grow: 1;
+      background-color: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-item, .channel-item {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .focused {
+      background-color: red;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="category-menu" id="categoryMenu"></div>
+  <div class="channel-menu" id="channelMenu"></div>
+  <div class="video-container">
+    <video id="videoPlayer" controls autoplay></video>
+  </div>
+
+  <script>
+    const playlistUrl = 'http://tiny.cc/homepro2238'; // เปลี่ยนเป็น URL หรือ path ของไฟล์ .m3u ของคุณ
+    const defaultHeaders = {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/605.1.15/Clipbox+/2.2.8',
+      'Referer': 'https://demo-live.siamzeed.com/'
+    };
+
+    let categories = [];
+    let channelsByCategory = {};
+    let currentCategoryIndex = 0;
+    let currentChannelIndex = 0;
+    let focusLevel = 'category'; // 'category' or 'channel'
+
+    async function fetchPlaylist() {
+      const response = await fetch(playlistUrl);
+      const text = await response.text();
+      parsePlaylist(text);
+      renderCategories();
+      renderChannels();
+      updateFocus();
+    }
+
+    function parsePlaylist(data) {
+      const lines = data.split('\n');
+      let currentInfo = {};
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith('#EXTINF:')) {
+          const nameMatch = line.match(/tvg-name="([^"]+)"/);
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+          const groupMatch = line.match(/group-title="([^"]+)"/);
+          currentInfo = {
+            name: nameMatch ? nameMatch[1] : 'Unnamed',
+            logo: logoMatch ? logoMatch[1] : '',
+            group: groupMatch ? groupMatch[1] : 'Others'
+          };
+        } else if (line && !line.startsWith('#')) {
+          currentInfo.url = line;
+          const group = currentInfo.group;
+          if (!channelsByCategory[group]) {
+            channelsByCategory[group] = [];
+            categories.push(group);
+          }
+          channelsByCategory[group].push({...currentInfo});
+        }
+      }
+    }
+
+    function renderCategories() {
+      const categoryMenu = document.getElementById('categoryMenu');
+      categoryMenu.innerHTML = '';
+      categories.forEach((cat, index) => {
+        const div = document.createElement('div');
+        div.textContent = cat;
+        div.className = 'menu-item';
+        if (index === currentCategoryIndex && focusLevel === 'category') div.classList.add('focused');
+        categoryMenu.appendChild(div);
+      });
+    }
+
+    function renderChannels() {
+      const channelMenu = document.getElementById('channelMenu');
+      channelMenu.innerHTML = '';
+      const group = categories[currentCategoryIndex];
+      const channels = channelsByCategory[group];
+      channels.forEach((ch, index) => {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>${ch.name}</strong><br><img src="${ch.logo}" style="height:30px;">`;
+        div.className = 'channel-item';
+        if (index === currentChannelIndex && focusLevel === 'channel') div.classList.add('focused');
+        channelMenu.appendChild(div);
+      });
+    }
+
+    function updateFocus() {
+      renderCategories();
+      renderChannels();
+    }
+
+    function playChannel() {
+      const group = categories[currentCategoryIndex];
+      const channel = channelsByCategory[group][currentChannelIndex];
+      const video = document.getElementById('videoPlayer');
+      fetch(channel.url, { headers: defaultHeaders })
+        .then(response => response.blob())
+        .then(blob => {
+          video.src = URL.createObjectURL(blob);
+          video.play();
+        })
+        .catch(err => console.error('Error loading stream:', err));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const maxCat = categories.length - 1;
+      const maxChan = channelsByCategory[categories[currentCategoryIndex]].length - 1;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          if (focusLevel === 'category' && currentCategoryIndex > 0) currentCategoryIndex--;
+          else if (focusLevel === 'channel' && currentChannelIndex > 0) currentChannelIndex--;
+          break;
+        case 'ArrowDown':
+          if (focusLevel === 'category' && currentCategoryIndex < maxCat) currentCategoryIndex++;
+          else if (focusLevel === 'channel' && currentChannelIndex < maxChan) currentChannelIndex++;
+          break;
+        case 'ArrowRight':
+          if (focusLevel === 'category') {
+            focusLevel = 'channel';
+            currentChannelIndex = 0;
+          }
+          break;
+        case 'ArrowLeft':
+          if (focusLevel === 'channel') {
+            focusLevel = 'category';
+          }
+          break;
+        case 'Enter':
+          if (focusLevel === 'channel') playChannel();
+          break;
+      }
+
+      updateFocus();
+    });
+
+    fetchPlaylist();
+  </script>
+</body>
+</html>
